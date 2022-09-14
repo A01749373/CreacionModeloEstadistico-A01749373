@@ -1,5 +1,5 @@
 ---
-title: "ConstruccionModeloEstadisticoBase"
+title: "Construccion de un Modelo Estadistico Base"
 author: "Ariadna Jocelyn Guzmán Jiménez - A01749373"
 date: "`r Sys.Date()`"
 output:
@@ -475,7 +475,7 @@ A<-aov(mediaR~reglamento)
 summary(A)
 
 ```
-A diferencia del anterior, logramos ver que en esta ocasión $p<\alpha$, mostrandonos que las diferencias entre algunas de las medias son estadísticamente significativas, es decir, no todas las medias de la población son iguales.
+A diferencia del anterior, logramos ver que en esta ocasión $p<\alpha$, mostrandonos que las diferencias entre algunas de las medias son estadísticamente significativas, es decir, no todas las medias de la población son iguales, lo que indica que hay la evidencia para suponer que la concentración promedio de mercurio es dañina para la salud humana.
 
 A través de este resultado, podemos visualizar que se pierde un grado de libertad, al contar con 52 en total siendo n = 53 y la variación entre tratamientos nos da un valor de 116, llegando a visualizar que como se mencionó anteriormente, ninguna de las concentraciones tiene un efecto igual a 0.
 
@@ -494,7 +494,7 @@ sprintf("Tamaño de la muestra del reglamento: ")
 n
 ```
 
-**Invertalos de confianza**
+**Invervalos de confianza**
 
 ```{r}
 sm = s/sqrt(n)
@@ -565,14 +565,20 @@ En la independencia. vemos que nuestra autocorrelación en los errores son negat
 
 ## Regresión lineal múltiple
 
+Para la implementación de nuestra regresión lineal múltiple, usaremos las variables anteriormente descritas en el gráfico de matriz de correlación para verificar cuál puede ser el mejor modelo y llegar a una conclusión de este problema.
+
+Como inicio, pasamos dichas variables a un dataframe para tener una mejor manipulación de los datos.
+
 
 ```{r}
 medidas = numericMercurio[1:5]
 medidas
-
 ```
 
 #### Correlacion 
+
+
+
 
 ```{r}
 library(Hmisc)
@@ -580,11 +586,18 @@ Rc = rcorr(as.matrix(medidas))
 Rc
 ```
 
+En este resultado, vemos ahora una matriz de correlación más detallada con las variables a tratar, por ello, notamos que la interacción con cada una de las variables (ejemplo: X3 con X4, X5 y X6) tiene una correlación positiva, por lo que no es recomendable hacer nuestra regresión lineal a partir de las variables mencionadas. Sin embargo, al tratarse de X7, la correlación es negativa, y vemos que pueden evitarse problemas de multicolinealidad para la implementación del modelo. Es por ello, que tomamos la vairable X7 como base para poder realizar la regresión múltiple con los valores restantes.
+
+Por otro lado, en la segunda matriz, notamos que si establecemos un nivel de significancia $\alpha = 0.05$, nuestros valores p son menores a el, por lo que nos indica que contamos con valores significativamente estadísticos para podder implementar el modelo.
+
 ```{r}
-pairs(medidas,labels=c("X7","X3","X4","X5","X6"),main="Matriz de dispersión",pch=20)
+pairs(medidas,labels=c("X3","X4","X5","X6","X7"),main="Matriz de dispersión",pch=20)
 ```
+Bajo este diagrama, comprobamos correctamente que las variables tienen correlación entre cada una, visualizando altas y bajas correlaciones positivas/negativas y fuertes y débiles correlaciones positivas/negativas.
 
 
+
+**Visualización gráfica de la corrlación entre variables **
 ```{r,message="FALSE"}
 library(GGally)
 ggpairs(medidas,lower = list(continuous = "smooth"),
@@ -600,6 +613,8 @@ mat_cor <- hetcor(medidas)$correlations #matriz de correlación policorica
 ggcorrplot(mat_cor,type="lower",hc.order = T)
 ```
 
+Aquí, visualizamos nuevamente que x7 contra las demás variables tienen una correlación negativa, mientras que las demás positivas, siendo X3 y X7 las más fuertes negativamente y la X5 y X3 las más fuertes positivamente.
+
 ### El modelo
 
 ```{r}
@@ -607,23 +622,26 @@ R=lm(X7~X3+X4+X5+X6, data = medidas)
 summary(R)
 ```
 
+La función lm, nos ayuda a realizar la regresión múltiple de X7 con cada una de las variables, viendo así las intercepciones, estimación, la desviación estandar, el valor t y p. 
+
 ### Selección del mejor modelo
 
 ```{r}
 step(R,direction="both",trace=1)
 ```
 
+Para la selección del mejor modelo, se toman en cuenta los resultados de la regresión realizada y la función step, hace un análisis de correlación entre las variables, analiza el modelo propuesto, detecta las variables no significativas en el modelo. Para llegar a la proposición de un nuevo modelo, se realiza el criterio de información de Akaike.
 
 ### El mejor modelo
 
 ```{r}
-R1=lm(X7~X3+X4+X5+X6, data = medidas)
+R1=lm(X7~X3+X5+X6, data = medidas)
 S=summary(R1)
 S
 ```
+De acuerdo ahora a este nuevo modelo plantead por la función, vemos que de disminuyeron menos grados de libertad y que los errores medios son menores. De igual forma
 
-
-Intervalos de confianza
+**Intervalos de confianza**
 
 ```{r}
 confint(R1)
@@ -648,20 +666,19 @@ shapiro.test(E)
 
 ```
 
+En la normalidad, se nos muestra que la probabilidad es ideal con respecto al modelo.
+
 ##### Homocedasticidad y modelo apropiado
 
-Gráfica Valores estimados vs Residuos
 
 ```{r}
 plot(Y,E,ylab="Residuos",xlab="Valores estimados",pch=20,col="red")
 abline(h=0,col="red")
 text(Y[],E[],1:30,cex=0.8,pos=3,offset=0.2)
 ```
-
+En la gráfica anterior, verificamos el modelo ya que se muestra cumple con los supuestos.
 
 ##### Independencia
-
-Errores vs Orden de observación
 
 ```{r}
 n=length(medidas$X7)
@@ -669,13 +686,17 @@ plot(c(1:n),R1$residuals,type="l",xlab="Orden de las observaciones",ylab="Residu
 abline(h=0,col="red")
 ```
 
+En la independencia. vemos que nuestra autocorrelación en los errores son negativos, es decir, se observa una alternancia muy marcada de residuos positivos y negativos.
+
+
+**Prueba de autocorrelación para verificar independencia: H0: rho=0**
 
 ```{r}
-#Prueba de autocorrelación para verificar independencia: H0: rho=0
-
 library(car)
 dwt(R1,alternative="two.sided")
 ```
+
+
 
 ### Datos atípicos o influyentes
 
@@ -699,6 +720,8 @@ which(abs(medidas$residuos_estandarizados)>3)
 
 ```
 
+En los datos atípicos se visualiza que las observaciones de medias de residuos no están alejados más allá del 4, que es el valor absoluto del residuo estandarizado, por lo que no hay datos atípicos.
+
 ##### Datos influyentes
 
 ```{r}
@@ -710,14 +733,15 @@ summary(influence.measures(R1))
 influence.measures(R1)
 ```
 
-Se consideran influyentes aquellas observaciones:  
-
-* que tengan leverages mayores a 2.5(p+1)/n = 2.5*3/30 =2.5/10 0.25
-* que tengan distancia de Cook superiores a 4/n.
-
 
 ```{r}
 influencePlot(R1)
 ```
+Con esta gráfica, logramos visualizar todos los puntos anteriormente calculados con respecto a la detección de datos influyentes, los cuales son los puntos que tienen impacto en las estimativas del modelo.
 
 
+# Conclusión
+
+De acuerdo con el problema, se buscaba investigar cuales eran los principales factores que influían e la contaminación de lagos y su afectación a los peces y seres humanos. 
+Después de realizar el método anova, primero se buscó si es que la concentración media de mercurio existente en los lagos, afectaba de importante manera a los peces respecto a su edad, ya fueran jóvenes o maduros. Sin embargo, el mismo método nos arrojó que no había la evidencia suficiente para poder llegar a una conclusión de ese tipo, lo que nos da a entender que sin importar la edad del pez, este se ve afectado de misma manera por el mercurio contaminante. Por otro lado, buscamos la evidencia para poder suponer que la concentración promedio del mercurio en lagos fuera dañino en la salud humana, y aunque en nuestra gráfica de exploración de datos se arrojaban que eran más los que no superaban la normatividad de referencia, mediante el método ANOVA se encontraron datos significativamente relevantes que pudieran indicar una evidencia de afección ya que, si hay valores existentes en algunos datos que pueden afectar a un ser humano a través de la pesca.
+Finalmente, respondiendo a la pregunta sobre cuáles son los principales factores que influyen en el nivel de contaminación, gracias a la regresión lineal múltiple, concluimos que son la **alcalinidad, calcio y clorofila**, ya que son las variables que conformaban el mejor modelo de regresión, y que más afluencia tenían con la concentración media del mercurio.
