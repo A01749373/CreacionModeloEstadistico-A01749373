@@ -1,0 +1,708 @@
+---
+title: "ConstruccionModeloEstadisticoBase"
+author: "Ariadna Jocelyn Guzmán Jiménez - A01749373"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Contaminación por mercurio
+
+## Descripción del problema
+
+La contaminación por mercurio de peces en el agua dulce comestibles es una amenaza directa contra nuestra salud. Se lo llevó a cabo un estudio reciente en 53 lagos de Florida con el fin de examinar los factores que influían en el nivel de contaminación por mercurio. 
+
+# Exploración de la base de datos
+
+## Lectura de datos
+
+En la parte de la lectura de datos, importamos nuestra base y por otra parte, hacemos una nueva variable que solo cuente con los datos númericos, ya que son los que nos servirán para nuestros modelos. Se omiten solamente la columna 1 y 2 ya que la primera sólo es un id para cada fila de datos y la segunda es el nombre del lago.
+
+```{r}
+mercurio = read.csv("mercurio.csv")
+numericMercurio = mercurio[3:12]
+```
+
+## Entendimiento de los datos
+
+
+En nuestra base de datos, encontramos los siguiente atributos:
+
+* **X1** = número de indentificación
+* **X2** = nombre del lago
+* **X3** = alcalinidad (mg/l de carbonato de calcio)
+* **X4** = PH
+* **X5** = calcio (mg/l)
+* **X6** = clorofila (mg/l)
+* **X7** = concentración media de mercurio (parte por millón) en el tejido muscualar del grupo de peces estudiados en cada lago
+* **X8** = número de peces estudiados en el lago
+* **X9** = mínimo de la concentración de mercurio en cada grupo de peces
+* **X10** = máximo de la concentración de mercurio en cada grupo de peces
+* **X11** = estimación (mediante regresión) de la concentración de mercurio en el pez de 3 años (o promedio de mercurio cuando la edad no está disponible)
+* **X12** = indicador de la edad de los peces (0: jóvenes; 1: maduros)
+
+
+Dado lo anterior visualizamos medidas generales de nuestro dataset:
+
+**Dimensión del dataset**
+
+```{r}
+dimension = dim(mercurio)
+cat("Número de filas:", dimension[1])
+cat("\nNúmero de columnas:", dimension[2])
+cat("\nCantidad de datos:", dimension[1] * dimension[2])
+```
+
+## Cálculo de medidas estadísticas
+
+**Análisis estadístico**
+
+```{r}
+summary(mercurio)
+```
+
+```{r}
+library(modeest)
+n = ncol(numericMercurio)
+d = matrix(NA, ncol = 8, nrow = n)
+for (i in 1:n){
+  d[i,] = c(as.numeric(summary(numericMercurio[,i])), sd(numericMercurio[,i]), mlv(numericMercurio[,i], method = "mfv")[1])
+}
+m = as.data.frame(d)
+row.names(m) = c("X3", "X4", "X5", "X6", "X7", "X8", "X9", "X10", "X11", "X12")
+names(m) = c("Minimo", "Q1", "Mediana", "Media", "Q3", "Maximo", "Desviacion Estandar", "Moda")
+m
+```
+
+
+La función summary aplicada para la base de datos, nos permitió visualizar un resumen general en medidas estadísticas de cada uno de los datos almacenados en la base "mercurio", sin embargo, se realizó posteriormente un dataframe que almacen 2 medidas más que no están consideradas en summary, desplegando de una forma más visual e interactiva el cálculo de cada uno de los datos.
+
+## Visualización de datos
+
+### Variables cuantitativas*
+ 
+* *X3*
+```{r}
+# Boxplot y valores atípicos
+alcalino = mercurio$X3
+q1_a = quantile(alcalino, 0.25)
+q3_a = quantile(alcalino, 0.75)
+Rc_a = q3_a - q1_a
+y2_a = q3_a + 1.5 * Rc_a
+
+boxplot(alcalino,horizontal=TRUE,ylim=c(0,y2_a) , main= "Boxplot alcalinidad")
+abline(v=y2_a,col="red")  #linea vertical en el límite de los datos atípicos
+X= numericMercurio[alcalino<y2_a,c("X3")] #Quitar datos atípicos de la matriz db en la variable X
+summary(X)
+
+## QQplot
+qqnorm(alcalino, main = "QQplot alcalinidad")
+qqline(alcalino)
+
+# Histograma
+hist(alcalino, prob = TRUE, col = 0, main = "Histograma de alcalinidad", xlab ="Alcalinidad")
+x = seq(min(alcalino), max(alcalino), 0.1)
+y = dnorm(x, mean(alcalino), sd(alcalino))
+lines(x, y, col = "red")
+
+```
+Tanto el histograma como el boxplot de alcalinidad, nos muestran una concentración de los datos hacia la izquierda, logrando visualizar un sesgo a la derecha indicando asimetría de la distribución con respecto a la media y mediana.
+Finalmente, de acuerdo al QQplot, se muestra una curtosis alta con una distribución leptocúrtica.
+
+
+* *X4*
+
+```{r}
+# Boxplot y valores atípicos
+ph = mercurio$X4
+q1_ph = quantile(ph, 0.25)
+q3_ph = quantile(ph, 0.75)
+Rc_ph = q3_ph - q1_ph
+y2_ph = q3_ph + 1.5 * Rc_ph
+
+boxplot(ph,horizontal=TRUE,ylim=c(0,y2_ph) , main= "Boxplot PH")
+abline(v=y2_ph,col="red")  #linea vertical en el límite de los datos atípicos
+X= numericMercurio[ph<y2_ph,c("X4")] #Quitar datos atípicos de la matriz db en la variable X
+summary(X)
+
+## QQplot
+qqnorm(ph, main = "QQplot PH")
+qqline(ph)
+
+# Histograma
+hist(ph, prob = TRUE, col = 0, main = "Histograma de PH", xlab ="PH")
+x = seq(min(ph), max(ph), 0.1)
+y = dnorm(x, mean(ph), sd(ph))
+lines(x, y, col = "red")
+
+```
+
+El histograma y el boxplot nos muestran una simetría en la distribución respecto a la media y mediana, logrando ver en el QQplot que la probabilidad normal es la ideal para la variable PH.
+
+* *X5*
+
+```{r}
+# Boxplot y valores atípicos
+calcio = mercurio$X5
+q1_cal = quantile(calcio, 0.25)
+q3_cal = quantile(calcio, 0.75)
+Rc_cal = q3_cal - q1_cal
+y2_cal = q3_cal + 1.5 * Rc_cal
+
+boxplot(calcio,horizontal=TRUE,ylim=c(0,y2_cal) , main= "Boxplot calcio")
+abline(v=y2_cal,col="red")  #linea vertical en el límite de los datos atípicos
+X= numericMercurio[calcio<y2_a,c("X5")] #Quitar datos atípicos de la matriz db en la variable X
+summary(X)
+
+## QQplot
+qqnorm(calcio, main = "QQplot calcio")
+qqline(calcio)
+
+# Histograma
+hist(calcio, prob = TRUE, col = 0, main = "Histograma de calcio", xlab ="Calcio")
+x = seq(min(calcio), max(calcio), 0.1)
+y = dnorm(x, mean(calcio), sd(calcio))
+lines(x, y, col = "red")
+
+```
+El histograma y el boxplot para el calcio, nos muestran una distribución cargada hacia la izquierda con respecto a la media y a la moda, viendo que se cuenta con un sesgo hacia la derecha y la presencia de datos atípicos y extremos, los cuales son diferentes a las demás observaciones deñ grupo de calcio. Por otra parte, en QQplot, nos lo confirma mostrando una asimetría positiva.
+
+* *X6*
+
+```{r}
+# Boxplot y valores atípicos
+clorofila = mercurio$X6
+q1_cl = quantile(clorofila, 0.25)
+q3_cl = quantile(clorofila, 0.75)
+Rc_cl = q3_cl - q1_cl
+y2_cl = q3_cl + 1.5 * Rc_cl
+
+boxplot(clorofila,horizontal=TRUE,ylim=c(0,y2_cl) , main= "Boxplot clorofila")
+abline(v=y2_cl,col="red")  #linea vertical en el límite de los datos atípicos
+X= numericMercurio[clorofila<y2_cl,c("X6")] #Quitar datos atípicos de la matriz db en la variable X
+summary(X)
+
+## QQplot
+qqnorm(clorofila, main = "QQplot clorofila")
+qqline(clorofila)
+
+# Histograma
+hist(clorofila, prob = TRUE, col = 0, main = "Histograma de clorofila", xlab ="Clorofila")
+x = seq(min(clorofila), max(clorofila), 0.1)
+y = dnorm(x, mean(clorofila), sd(clorofila))
+lines(x, y, col = "red")
+
+```
+Para la clorofila, el caso es similar. Se nos muestra una distribución cargada hacia la izquierda con respecto a la media y a la moda, viendo que se cuenta con un sesgo hacia la derecha pero no cuenta con la presencia de datos atípicos. Por otra parte, en QQplot, nos lo confirma mostrando una asimetría positiva.
+
+
+
+* *X7*
+
+```{r}
+# Boxplot y valores atípicos
+concentracion = mercurio$X7
+q1_con = quantile(concentracion, 0.25)
+q3_con = quantile(concentracion, 0.75)
+Rc_con = q3_con - q1_con
+y2_con = q3_con + 1.5 * Rc_con
+
+boxplot(concentracion,horizontal=TRUE,ylim=c(0,y2_con) , main= "Boxplot concentración")
+abline(v=y2_con,col="red")  #linea vertical en el límite de los datos atípicos
+X= numericMercurio[concentracion<y2_con,c("X7")] #Quitar datos atípicos de la matriz db en la variable X
+summary(X)
+
+## QQplot
+qqnorm(concentracion, main = "QQplot concentración")
+qqline(concentracion)
+
+# Histograma
+hist(concentracion, prob = TRUE, col = 0, main = "Histograma de concentración", xlab ="Concentración")
+x = seq(min(concentracion), max(concentracion), 0.1)
+y = dnorm(x, mean(concentracion), sd(concentracion))
+lines(x, y, col = "red")
+
+```
+Para la concentración de la media, se muestra igualmetne una distribución cargada hacia la izquierda con respecto a la media y a la moda, sesgo hacia la derecha y sin la presencia de datos atípicos. Por otra parte, en QQplot, nos lo confirma mostrando una asimetría positiva.
+
+
+* *X8*
+
+``` {r}
+# Boxplot y valores atípicos
+peces = mercurio$X8
+q1_p = quantile(peces, 0.25)
+q3_p = quantile(peces, 0.75)
+Rc_p = q3_p - q1_p
+y2_p = q3_p + 1.5 * Rc_p
+
+boxplot(peces,horizontal=TRUE,ylim=c(0,y2_p) , main= "Boxplot peces")
+abline(v=y2_p,col="red")  #linea vertical en el límite de los datos atípicos
+X= numericMercurio[peces<y2_p,c("X8")] #Quitar datos atípicos de la matriz db en la variable X
+summary(X)
+
+## QQplot
+qqnorm(peces, main = "QQplot peces")
+qqline(peces)
+
+# Histograma
+hist(peces, prob = TRUE, col = 0, main = "Histograma de peces", xlab ="Peces")
+x = seq(min(peces), max(peces), 0.1)
+y = dnorm(x, mean(peces), sd(peces))
+lines(x, y, col = "red")
+
+```
+En la cantidad de peces del lago, se ve una casi simetría con respecto a la moda y la media en la distribución, pero, aquí si contamos con la presencia de 3 valores atípicos/extremos. El QQplot nos muestra una distribución con colas gruesas, es decir, baja curtosis y distribución platicúrtica.
+
+* *X9*
+
+```{r}
+# Boxplot y valores atípicos
+minimo = mercurio$X9
+q1_min = quantile(minimo, 0.25)
+q3_min = quantile(minimo, 0.75)
+Rc_min = q3_min - q1_min
+y2_min = q3_min + 1.5 * Rc_min
+
+boxplot(minimo,horizontal=TRUE,ylim=c(0,y2_min) , main= "Boxplot mínimo de concentración")
+abline(v=y2_min,col="red")  #linea vertical en el límite de los datos atípicos
+X= numericMercurio[minimo<y2_min,c("X9")] #Quitar datos atípicos de la matriz db en la variable X
+summary(X)
+
+## QQplot
+qqnorm(minimo, main = "QQplot mínimo de concentración")
+qqline(minimo)
+
+# Histograma
+hist(minimo, prob = TRUE, col = 0, main = "Histograma de mínimoconcentración", xlab ="Mínimo")
+x = seq(min(minimo), max(minimo), 0.1)
+y = dnorm(x, mean(minimo), sd(minimo))
+lines(x, y, col = "red")
+
+```
+Se muestra un sesgo a la derecha con la distribución recargada hacia la izquierda de acuerdo a la media y mediana. Esta variable, no presenta datos atípicos y el QQplot, nos indica una asimetría positiva.
+
+
+* *X10*
+
+```{r}
+# Boxplot y valores atípicos
+maximo = mercurio$X10
+q1max = quantile(maximo, 0.25)
+q3max = quantile(maximo, 0.75)
+Rcmax = q3max - q1max
+y2max = q3max + 1.5 * Rcmax
+
+boxplot(maximo,horizontal=TRUE,ylim=c(0,y2max) , main= "Boxplot máximo de concentración")
+abline(v=y2max,col="red")  #linea vertical en el límite de los datos atípicos
+X= numericMercurio[maximo<y2max,c("X10")] #Quitar datos atípicos de la matriz db en la variable X
+summary(X)
+
+## QQplot
+qqnorm(maximo, main = "QQplot máximo de concentración")
+qqline(maximo)
+
+# Histograma
+hist(maximo, prob = TRUE, col = 0, main = "Histograma de máximo de concentración", xlab ="Máximo", ylim = c(0, 0.8))
+x = seq(min(maximo), max(maximo), 0.1)
+y = dnorm(x, mean(maximo), sd(maximo))
+lines(x, y, col = "red")
+
+```
+El máximo de la concentración nos muestra una simetría en los datos, ya que están de esta forma distribuidos de acuerdo a la mediana y la moda. Finalmente, el QQplot nos indica una probabilidad normal casi ideal.
+
+* *X11*
+
+
+```{r}
+# Boxplot y valores atípicos
+estimacion = mercurio$X11
+q1_est = quantile(estimacion, 0.25)
+q3_est = quantile(estimacion, 0.75)
+Rc_est = q3_est - q1_est
+y2_est = q3_est + 1.5 * Rc_est
+
+boxplot(estimacion,horizontal=TRUE,ylim=c(0,y2_est) , main= "Boxplot estimación")
+abline(v=y2_est,col="red")  #linea vertical en el límite de los datos atípicos
+X= numericMercurio[estimacion<y2_est,c("X11")] #Quitar datos atípicos de la matriz db en la variable X
+summary(X)
+
+## QQplot
+qqnorm(estimacion, main = "QQplot estimación")
+qqline(estimacion)
+
+# Histograma
+hist(estimacion, prob = TRUE, col = 0, main = "Histograma de estimación", xlab ="Estimación")
+x = seq(min(estimacion), max(estimacion), 0.1)
+y = dnorm(x, mean(estimacion), sd(estimacion))
+lines(x, y, col = "red")
+
+```
+Estimación con sesgo hacia la derecha, distribución recargada hacia la izquierda con respecto a la media y mediana y sin datos atípicos. QQplot con asimetría positiva.
+
+### Medidas cualitativas
+
+* **X12**
+
+```{r}
+barplot(table(mercurio$X12),col=c("lightpink","hotpink4"), main = "Frecuencia de peces jóvenes y maduros", legend = c("Jóvenes", "Maduros"), args.legend = list(x = "topleft", horiz = FALSE))
+
+```
+Aquí notamos que son más la cantidad de peces maduros que jóvenes, lo que puede indicar un problema en que el mercurio, esta afectando más a los jóvenes.
+
+* **Medidición de lagos que superaron los 0.5 mg de hg/kg**
+
+```{r}
+mediaCnt = numericMercurio
+mediaCnt$X13 <- with(mediaCnt, ifelse(concentracion > 0.5, 1, 0))
+tableMediaCnt = table(mediaCnt$X13)
+print("Tabla de Distribución de Lagos que Superaron los 0.5 mg de Hg/Kg: ")
+tableMediaCnt
+
+# Gráfica de Frecuencia
+barplot(tableMediaCnt, width = 1, cex.names = 0.6, col = c("darkseagreen", "cadetblue3"), main = "Frecuencia de Lagos que Superaron el Valor Establecido", xlab = "Frecuencia", ylab = "Estatus", horiz = TRUE, las = 2, legend = c("mercurio < 0.5", "mercurio > 0.5"), args.legend = list(x = "topright", horiz = FALSE))
+```
+Con esta gráfica, visualizamos la cantidad de datos que superan la normativa de referencia de niveles máximos de mercurio, siendo más de la mitad los que no lo logran.
+
+
+* **División y frecuencia de ph**
+
+```{r}
+divPh = numericMercurio
+divPh$X4 <- with(divPh, ifelse(ph < 7.0, "Ácido", ifelse(ph == 7.0, "Neutro", "Alcalino")))
+tableDivPh = table(divPh$X4)
+print("Tabla de Distribución del PH: ")
+tableDivPh
+
+#Gráfica de pie
+colors <- c("lightgoldenrod1", "palegreen3", "tan2")
+pie(tableDivPh, col = colors, main = "Gráfica del PH", labels = paste0(round(100 *tableDivPh/sum(tableDivPh), 2), "%"))
+legend("bottomleft", c("Ácido", "Neutro", "Alcalino"), fill=colors)
+```
+En esta gráfica de pastel, vemos que dominan más las variables con ph ácido, seguido del neutro y finalmente alcalino, lo cual muestra el gran afectamiento hacia los peces ya que les puede provocar el no funcionamiento de algunas células gracias a la producción prolongada de ácido.
+
+# Correlaciones
+
+**Matriz de correlacion**
+
+```{r}
+library(psych)
+corPlot(cor(numericMercurio))
+```
+
+
+Debido a la matriz de correlación anteriormente desplegada, logramos ver que hay una mayor interacción y dependencia entre las variables:
+* *X7 y X9* -> 0.93
+* *X7 y X10* -> 0.92
+* *X7 y X11* -> 0.96
+Lo que da a indicar que la concentración media de mercurio en el tejido muscular del grupo de peces estudiados, tienen más relación con la estimación, el mínimo y el máximo de peces estudiados.
+
+
+# Implementación de modelos estadísticos
+
+## ANOVA
+```{r}
+mediaJ = numericMercurio[numericMercurio$X12 == 0,]$X7
+
+mediaM = numericMercurio[numericMercurio$X12 == 1,]$X7
+
+print("Jovenes")
+mediaJ
+print("Maduros")
+mediaM
+
+print("Media por edad")
+mediaEdad = c(mediaJ, mediaM)
+mediaEdad
+
+
+```
+
+
+```{r}
+edad = c(rep("J", length(mediaJ) ),rep("M",length(mediaM)))
+edad = factor(edad)
+
+A<-aov(mediaEdad~edad)
+summary(A)
+
+```
+
+
+```{r}
+m = tapply(mediaEdad, edad, mean)
+s = tapply(mediaEdad, edad, sd)
+n = tapply(mediaEdad, edad, length)
+sprintf("Medias de la edad: ")
+m
+sprintf("Desviación estándar de la edad: ")
+s
+sprintf("Tamaño de la muestra de la edad: ")
+n
+```
+
+```{r}
+sm = s/sqrt(n)
+E=abs(qt(0.025,n-1))*sm
+In=m-E
+In
+Sup=m+E
+Sup
+```
+
+```{r}
+plot(0,ylim=c(0,3),xlim=c(0,1), yaxt="n", ylab="",xlab="Concentración",main="Edad de peces")
+axis(2,at=c(1:2),labels=c("J","M"))
+for(i in 1:2){
+arrows(In[i],i,Sup[i],i, angle=90, code=3, length = 0.1, lwd = 2,col=i+2)
+points(m[i], i, pch=19, cex=1.1,col=i+2)}
+abline(v=mean(mediaEdad),lty=3,col="red")
+```
+```{r}
+boxplot(mediaEdad ~ edad, col = 2:5, horizontal = TRUE)
+abline(v = mean(mediaEdad), lty = 3, col = "red")
+```
+```{r}
+Tu=TukeyHSD(A)
+Tu
+plot(TukeyHSD(A))
+```
+
+### Verificación de supuestos
+
+#### Normalidad
+
+```{r}
+qqnorm(A$residuals)
+qqline(A$residuals, col="red")
+
+hist(A$residuals, col=0)
+```
+
+
+#### Homocedasticidad
+
+```{r}
+plot(A$fitted.values,A$residuals,ylab="Residuos",xlab = "Valores estimados", main="Valores estimados vs residuos")
+abline(h=0, col="red")
+
+```
+
+
+####Independencia 
+
+```{r}
+plot(c(1:53),A$residuals, main="Errores vs orden de observación", type="l", xlab="Orden de las observaciones", ylab= "Residuos")
+abline(h=0, col="red")
+```
+## Regresión lineal múltiple
+
+
+```{r}
+medidas = numericMercurio[1:5]
+medidas
+
+```
+
+#### Correlacion 
+
+```{r}
+library(Hmisc)
+Rc = rcorr(as.matrix(medidas))
+Rc
+```
+
+```{r}
+pairs(medidas,labels=c("X7","X3","X4","X5","X6"),main="Matriz de dispersión",pch=20)
+```
+
+
+```{r,message="FALSE"}
+library(GGally)
+ggpairs(medidas,lower = list(continuous = "smooth"),
+        diag = list(continuous = "barDiag"), axisLabels = "none")
+```
+
+
+
+```{r}
+library(ggcorrplot)
+library(polycor)
+mat_cor <- hetcor(medidas)$correlations #matriz de correlación policorica
+ggcorrplot(mat_cor,type="lower",hc.order = T)
+```
+
+### El modelo
+
+```{r}
+R=lm(X7~X3+X4+X5+X6, data = medidas)
+summary(R)
+```
+
+### Selección del mejor modelo
+
+```{r}
+step(R,direction="both",trace=1)
+```
+
+
+### El mejor modelo
+
+```{r}
+R1=lm(X7~X3+X4+X5+X6, data = medidas)
+S=summary(R1)
+S
+```
+
+
+Intervalos de confianza
+
+```{r}
+confint(R1)
+```
+
+### Verificación de supuestos
+
+##### Normalidad
+
+```{r}
+E=R1$residuals
+Y=R1$fitted.values
+
+qqnorm(E)
+qqline(E,col="red")
+
+hist(E,col="lightcyan",freq=FALSE,main="Histograma de Residuos",ylim=c(0,3), xlim = c(-0.5, 1),xlab="",ylab="Densidad")
+lines(density(E),col="red")
+curve(dnorm(x,mean=mean(E),sd=sd(E)), add=TRUE, col="blue",lwd=2)
+
+shapiro.test(E)
+
+```
+
+##### Homocedasticidad y modelo apropiado
+
+Gráfica Valores estimados vs Residuos
+
+```{r}
+plot(Y,E,ylab="Residuos",xlab="Valores estimados",pch=20,col="red")
+abline(h=0,col="red")
+text(Y[],E[],1:30,cex=0.8,pos=3,offset=0.2)
+```
+
+
+##### Independencia
+
+Errores vs Orden de observación
+
+```{r}
+n=length(medidas$X7)
+plot(c(1:n),R1$residuals,type="l",xlab="Orden de las observaciones",ylab="Residuos")
+abline(h=0,col="red")
+```
+
+
+```{r}
+#Prueba de autocorrelación para verificar independencia: H0: rho=0
+
+library(car)
+dwt(R1,alternative="two.sided")
+```
+
+### Datos atípicos o influyentes
+
+##### Datos atípicos
+
+Se estandarizan los residuos y se observa si hay distancias mayores a 3.
+
+```{r}
+library(dplyr)
+medidas$residuos_estandarizados <- rstudent(R1)  #Introduce una columna en D con los residuos del modelo estandarizados
+
+ggplot(data = medidas, aes(x = predict(R1), y = abs(residuos_estandarizados))) +
+  geom_hline(yintercept = 3, color = "red", linetype = "dashed") +
+  # se identifican en rojo observaciones con residuos estandarizados absolutos > 3
+  geom_point(aes(color = ifelse(abs(residuos_estandarizados) > 3, 'red', 'black'))) +
+  scale_color_identity() +
+  labs(title = "Distribución de los residuos estandarizados",x = "predicción modelo") + 
+  theme_bw() + theme(plot.title = element_text(hjust = 0.5))
+
+which(abs(medidas$residuos_estandarizados)>3)
+
+```
+
+##### Datos influyentes
+
+```{r}
+summary(influence.measures(R1))
+```
+
+
+```{r}
+influence.measures(R1)
+```
+
+Se consideran influyentes aquellas observaciones:  
+
+* que tengan leverages mayores a 2.5(p+1)/n = 2.5*3/30 =2.5/10 0.25
+* que tengan distancia de Cook superiores a 4/n.
+
+
+```{r}
+influencePlot(R1)
+```
+
+
+## Conclusión
+
+* Escribir el Modelo
+* Variabilidad explicada por el modelo (coeficiente de determinación)
+* Significancia del modelo: Valor p del modelo (F)
+* Si se satisfacen todos los supuestos del modelo (indicar ligeros alejamientos)
+* Si hay datos atípicos o datos que influyan en el modelo.
+* En caso de que se haya hecho el análisis sin datos influyentes, se reportan ambos modelos comparando sus mejoras.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
